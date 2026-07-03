@@ -1,0 +1,7 @@
+.vs/
+.idea/
+*.user
+*.suo
+
+HackerTerminal/bin
+HackerTerminal/obj
