@@ -5,14 +5,12 @@ namespace HackerTerminal;
 public class Game
 {
     private GameState _state = new();
-    private readonly List<QuestFile> _files;
-    private readonly Dictionary<string, int> _dirVisibleFromLevel = new()
-    {
-        ["/inbox"] = 1,
-        ["/reception"] = 1,
-        ["/studio"] = 2,
-        ["/archive"] = 3,
-    };
+
+    private List<QuestFile> _files;
+    private Dictionary<string, int> _dirVisibleFromLevel;
+    private Dictionary<string, string> _plainTextByPath;
+
+    private const string QuestsDir = "quests";
 
     private const string StudioAddress = "172.20.14.9";
     private const string ArchiveAddress = "10.55.2.1";
@@ -30,10 +28,37 @@ public class Game
 
     public Game()
     {
-        _files = BuildQuest();
+        try
+        {
+            var quest = QuestLoader.Load(QuestsDir);
+            _files = quest.Files;
+            _dirVisibleFromLevel = quest.DirVisibleFromLevel;
+            _plainTextByPath = quest.PlainTextByPath;
+        }
+        catch (Exception ex)
+        {
+            Console.ForegroundColor = ConsoleColor.Red;
+            Console.WriteLine($"Не удалось загрузить квест из '{QuestsDir}': {ex.Message}");
+            Console.WriteLine("Используется встроенный резервный квест.");
+            Console.ResetColor();
+
+            _files = BuildFallbackQuest();
+            _dirVisibleFromLevel = new()
+            {
+                ["/inbox"] = 1,
+                ["/reception"] = 1,
+                ["/studio"] = 2,
+                ["/archive"] = 3,
+            };
+            _plainTextByPath = new()
+            {
+                ["/reception/badge.enc"] = BadgePlainText,
+                ["/archive/truth.enc"] = TruthPlainText,
+            };
+        }
     }
 
-    private static List<QuestFile> BuildQuest()
+    private static List<QuestFile> BuildFallbackQuest()
     {
         return new List<QuestFile>
         {
@@ -42,118 +67,9 @@ public class Game
                 Path = "/readme.txt",
                 VisibleFromLevel = 1,
                 Content =
-                    "БРИФИНГ.\n" +
-                    "Студию PMR Peak Games наняли тебя, чтобы найти того, кто слил в сеть\n" +
-                    "предрелизную сборку игры «Порог» за неделю до релиза.\n" +
-                    "Начни с собственной папки — там черновики, которые ты набросал после\n" +
-                    "первого созвона с заказчиком.\n" +
-                    "Команда help покажет список доступных операций."
-            },
-            new()
-            {
-                Path = "/inbox/notes.txt",
-                VisibleFromLevel = 1,
-                Content =
-                    "Мои заметки, чтобы не забыть.\n" +
-                    "На проходной всё ещё стоит древний ридер бейджей с шифром Цезаря,\n" +
-                    "сдвиг вроде 6."
-            },
-            new()
-            {
-                Path = "/inbox/old_grocery_list.txt",
-                VisibleFromLevel = 1,
-                Content =
-                    "Список покупок (черновик, случайно попал не в ту папку):\n" +
-                    "- кофе\n" +
-                    "- хлеб\n" +
-                    "- зарядка для мыши\n" +
-                    "- забрать посылку\n" +
-                    "(Похоже, это не имеет отношения к делу.)"
-            },
-            new()
-            {
-                Path = "/reception/badge.enc",
-                VisibleFromLevel = 1,
-                Encrypted = true,
-                CipherKey = 6,
-                Content = Cipher.Encode(BadgePlainText, 6)
-            },
-            new()
-            {
-                Path = "/reception/visitor_log.txt",
-                VisibleFromLevel = 1,
-                Content =
-                    "Журнал регистрации посетителей.\n" +
-                    "14:02 — курьер, доставка обедов.\n" +
-                    "14:15 — техник, обслуживание кондиционера.\n" +
-                    "14:40 — курьер, доставка обедов (опять).\n" +
-                    "(Ничего полезного, обычный день.)"
-            },
-            new()
-            {
-                Path = "/studio/security_log.txt",
-                VisibleFromLevel = 2,
-                Content =
-                    "[ЖУРНАЛ БЕЗОПАСНОСТИ]\n" +
-                    "Зафиксирован вход в систему сборки под учёткой 'admin' в необычное время.\n" +
-                    "Пароль, похоже, кто-то обсуждал в общем чате команды — глупо,\n" +
-                    "но людям свойственно ошибаться."
-            },
-            new()
-            {
-                Path = "/studio/team_chat.json",
-                VisibleFromLevel = 2,
-                Content =
-                    "[Экспорт переписки. Общий чат команды «Порог».]\n\n" +
-                    "Egor_Dev, 09:14: доброе утро, кто-нибудь трогал билд-сервер ночью?\n" +
-                    "Nastya_QA, 09:15: не я, я спала как убитая\n" +
-                    "Egor_Dev, 09:16: странно, в логах новый вход под admin\n" +
-                    "Egor_Dev, 09:20: так, пароль на билд-сервере опять дефолтный,\n" +
-                    "я временно поставил midnight, поменяю вечером\n" +
-                    "Nastya_QA, 09:21: ЕГОР ЭТО ОБЩИЙ ЧАТ\n" +
-                    "Egor_Dev, 09:21: твою ж...\n" +
-                    "Egor_Dev, 09:22: удалил сообщение! никто не видел, да?\n" +
-                    "Nastya_QA, 09:22: уже видели, все 40 человек в чате"
-            },
-            new()
-            {
-                Path = "/studio/sprint_backlog.txt",
-                VisibleFromLevel = 2,
-                Content =
-                    "Бэклог спринта.\n" +
-                    "- поправить баг с текстурами на 3 уровне\n" +
-                    "- добавить поддержку геймпада\n" +
-                    "- написать тесты (когда-нибудь)\n" +
-                    "(К утечке отношения не имеет.)"
-            },
-            new()
-            {
-                Path = "/archive/keycard.txt",
-                VisibleFromLevel = 3,
-                Content = "Фрагмент ключа шифрования, вышитый на старой карте доступа архива: 3"
-            },
-            new()
-            {
-                Path = "/archive/truth.enc",
-                VisibleFromLevel = 3,
-                Encrypted = true,
-                CipherKey = 3,
-                Content = Cipher.Encode(TruthPlainText, 3)
-            },
-            new()
-            {
-                Path = "/archive/coffee_machine_manual.txt",
-                VisibleFromLevel = 3,
-                Content =
-                    "Инструкция к кофемашине в переговорной.\n" +
-                    "Режим эспрессо — кнопка 2.\n" +
-                    "(Прости, здесь правда нет ничего про утечку.)"
-            },
-            new()
-            {
-                Path = "/archive/СЕКРЕТНОЕ_НЕ_ОТКРЫВАТЬ.txt",
-                VisibleFromLevel = 3,
-                Content = "А что вы тут хотели найти? ;)"
+                    "ОШИБКА ЗАГРУЗКИ КВЕСТА.\n" +
+                    "Файлы квеста не найдены или повреждены (папка 'quests').\n" +
+                    "Проверь, что рядом с исполняемым файлом лежит папка quests с .json внутри."
             },
         };
     }
@@ -445,7 +361,7 @@ public class Game
         string attempt = Cipher.Decode(file.Content, key);
         Type("Результат расшифровки:");
         Type(attempt);
-        
+
         int normalizedInput = ((key % 26) + 26) % 26;
         int normalizedExpected = ((file.CipherKey % 26) + 26) % 26;
 
@@ -467,13 +383,9 @@ public class Game
             Type("[Похоже на бессмыслицу — ключ, скорее всего, неверный.]");
         }
     }
-    
-    private static string? ExpectedPlainText(string path) => path switch
-    {
-        "/reception/badge.enc" => BadgePlainText,
-        "/archive/truth.enc" => TruthPlainText,
-        _ => null
-    };
+
+    private string? ExpectedPlainText(string path) =>
+        _plainTextByPath.GetValueOrDefault(path);
 
     private void Unlock(string code)
     {
