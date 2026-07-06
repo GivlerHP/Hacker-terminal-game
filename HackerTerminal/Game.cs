@@ -4,7 +4,7 @@ namespace HackerTerminal;
 
 public class Game
 {
-    private readonly GameState _state = new();
+    private GameState _state = new();
     private readonly List<QuestFile> _files;
     private readonly Dictionary<string, int> _dirVisibleFromLevel = new()
     {
@@ -27,10 +27,6 @@ public class Game
         _files = BuildQuest();
     }
 
-    // ---------------------------------------------------------------
-    //  Данные квеста
-    // ---------------------------------------------------------------
-
     private static List<QuestFile> BuildQuest()
     {
         return new List<QuestFile>
@@ -40,7 +36,9 @@ public class Game
                 Path = "/readme.txt",
                 VisibleFromLevel = 1,
                 Content =
-                    "Заметки для нового сотрудника:\n" +
+                    "БРИФИНГ.\n" +
+                    "Тебя наняли, чтобы найти утечку в закрытой сети компании.\n" +
+                    "Начни с домашней папки — там могут быть черновики бывшего сотрудника.\n" +
                     "Команда help покажет список доступных операций."
             },
             new()
@@ -93,14 +91,11 @@ public class Game
             },
         };
     }
-
-    // ---------------------------------------------------------------
-    //  Главный цикл
-    // ---------------------------------------------------------------
-
+    
     public void Run()
     {
         PrintBanner();
+        StartMenu();
         BootSequence();
 
         Type("Введите 'help', чтобы увидеть список команд.\n");
@@ -123,6 +118,76 @@ public class Game
         }
 
         EndScreen();
+    }
+
+    private void StartMenu()
+    {
+        if (!File.Exists(SavePath)) return;
+
+        Console.WriteLine("Обнаружен файл предыдущего взлома: " + SavePath);
+        Console.WriteLine("1 - Начать заново");
+        Console.WriteLine("2 - Продолжить взлом (загрузить сохранение)");
+
+        while (true)
+        {
+            Console.Write("> ");
+            string? raw = Console.ReadLine();
+            if (raw == null)
+            {
+                Type("Начинаем новый взлом.\n");
+                return;
+            }
+            raw = raw.Trim();
+
+            if (raw == "1")
+            {
+                Type("Начинаем новый взлом.\n");
+                return;
+            }
+
+            if (raw == "2")
+            {
+                if (TryLoadState())
+                {
+                    Type($"Сохранение загружено. Уровень {_state.Level}, очки {_state.Score}.\n");
+                }
+                else
+                {
+                    Type("Не удалось прочитать сохранение — начинаем заново.\n");
+                }
+                return;
+            }
+
+            Type("Введите 1 или 2.");
+        }
+    }
+
+    private bool TryLoadState()
+    {
+        try
+        {
+            string json = File.ReadAllText(SavePath);
+            var loaded = JsonSerializer.Deserialize<GameState>(json);
+            if (loaded == null) return false;
+
+            _state = loaded;
+
+            foreach (var path in _state.DecryptedFiles)
+            {
+                var file = _files.FirstOrDefault(f => f.Path == path);
+                if (file == null) continue;
+
+                file.Decrypted = true;
+                string plain = ExpectedPlainText(file.Path);
+                if (plain != null) file.Content = plain;
+            }
+
+            return true;
+        }
+        catch
+        {
+            return false;
+        }
     }
 
     private string PromptHost() => _state.Level switch
@@ -161,10 +226,6 @@ public class Game
                 break;
         }
     }
-
-    // ---------------------------------------------------------------
-    //  Команды
-    // ---------------------------------------------------------------
 
     private void Help()
     {
@@ -314,9 +375,7 @@ public class Game
         Type("Результат расшифровки:");
         Type(attempt);
 
-        string expected = file.Path == "/gate/access.enc" ? AccessPlainText
-                         : file.Path == "/vault/truth.enc" ? TruthPlainText
-                         : null;
+        string expected = ExpectedPlainText(file.Path);
 
         if (expected != null && attempt == expected)
         {
@@ -336,6 +395,13 @@ public class Game
             Type("[Похоже на бессмыслицу — ключ, скорее всего, неверный.]");
         }
     }
+
+    private static string ExpectedPlainText(string path) => path switch
+    {
+        "/gate/access.enc" => AccessPlainText,
+        "/vault/truth.enc" => TruthPlainText,
+        _ => null
+    };
 
     private void Unlock(string code)
     {
@@ -392,7 +458,7 @@ public class Game
 
         if (password == null)
         {
-            Type($"Взлом учётной записи 'admin'. Осталось попыток: {_state.HackAttemptsLeft}");
+            Console.WriteLine($"Взлом учётной записи 'admin'. Осталось попыток: {_state.HackAttemptsLeft}");
             Console.Write("password> ");
             password = Console.ReadLine() ?? "";
         }
@@ -478,8 +544,15 @@ public class Game
 
     private void Save()
     {
+        if (_state.GameOver)
+        {
+            Type("Игра уже завершена — сохранять нечего.");
+            return;
+        }
+
         try
         {
+            _state.DecryptedFiles = _files.Where(f => f.Decrypted).Select(f => f.Path).ToList();
             var json = JsonSerializer.Serialize(_state, new JsonSerializerOptions { WriteIndented = true });
             File.WriteAllText(SavePath, json);
             Type("Прогресс сохранён в " + SavePath);
@@ -489,11 +562,7 @@ public class Game
             Type("Не удалось сохранить: " + ex.Message);
         }
     }
-
-    // ---------------------------------------------------------------
-    //  Вспомогательное
-    // ---------------------------------------------------------------
-
+    
     private QuestFile FindFile(string name)
     {
         name = name.Trim('/');
@@ -511,15 +580,12 @@ public class Game
         return path.Substring(0, idx);
     }
 
-    // ---------------------------------------------------------------
-    //  Атмосфера
-    // ---------------------------------------------------------------
-
     private static void Type(string text, int delayMs = 4)
     {
         foreach (char c in text)
         {
             Console.Write(c);
+            Console.Out.Flush();
             if (delayMs > 0) Thread.Sleep(delayMs);
         }
         Console.WriteLine();
