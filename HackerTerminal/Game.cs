@@ -8,17 +8,17 @@ public class Game
     private readonly List<QuestFile> _files;
     private readonly Dictionary<string, int> _dirVisibleFromLevel = new()
     {
-        ["/home"] = 1,
-        ["/gate"] = 1,
-        ["/server"] = 2,
-        ["/vault"] = 3,
+        ["/inbox"] = 1,
+        ["/reception"] = 1,
+        ["/studio"] = 2,
+        ["/archive"] = 3,
     };
 
-    private const string ServerAddress = "192.168.4.7";
-    private const string VaultAddress = "10.0.0.7";
+    private const string StudioAddress = "172.20.14.9";
+    private const string ArchiveAddress = "10.55.2.1";
 
-    private const string AccessPlainText = "UNLOCK CODE: RAVEN";
-    private const string TruthPlainText = "THE TRUTH IS FREE NOW";
+    private const string BadgePlainText = "GUEST CODE: COMPASS";
+    private const string TruthPlainText = "Утечка произошла по вине продюсера Марии";
 
     private const string SavePath = "save.json";
 
@@ -43,57 +43,117 @@ public class Game
                 VisibleFromLevel = 1,
                 Content =
                     "БРИФИНГ.\n" +
-                    "Тебя наняли, чтобы найти утечку в закрытой сети компании.\n" +
-                    "Начни с домашней папки — там могут быть черновики бывшего сотрудника.\n" +
+                    "Студию PMR Peak Games наняли тебя, чтобы найти того, кто слил в сеть\n" +
+                    "предрелизную сборку игры «Порог» за неделю до релиза.\n" +
+                    "Начни с собственной папки — там черновики, которые ты набросал после\n" +
+                    "первого созвона с заказчиком.\n" +
                     "Команда help покажет список доступных операций."
             },
             new()
             {
-                Path = "/home/notes.txt",
+                Path = "/inbox/notes.txt",
                 VisibleFromLevel = 1,
                 Content =
-                    "Заметки для себя, не забыть.\n" +
-                    "Старый шифр всё ещё используют на воротах.\n" +
-                    "Сдвиг, который я всегда забываю: 4."
+                    "Мои заметки, чтобы не забыть.\n" +
+                    "На проходной всё ещё стоит древний ридер бейджей с шифром Цезаря,\n" +
+                    "сдвиг вроде 6."
             },
             new()
             {
-                Path = "/gate/access.enc",
+                Path = "/inbox/old_grocery_list.txt",
+                VisibleFromLevel = 1,
+                Content =
+                    "Список покупок (черновик, случайно попал не в ту папку):\n" +
+                    "- кофе\n" +
+                    "- хлеб\n" +
+                    "- зарядка для мыши\n" +
+                    "- забрать посылку\n" +
+                    "(Похоже, это не имеет отношения к делу.)"
+            },
+            new()
+            {
+                Path = "/reception/badge.enc",
                 VisibleFromLevel = 1,
                 Encrypted = true,
-                CipherKey = 4,
-                Content = Cipher.Encode(AccessPlainText, 4)
+                CipherKey = 6,
+                Content = Cipher.Encode(BadgePlainText, 6)
             },
             new()
             {
-                Path = "/server/log.txt",
+                Path = "/reception/visitor_log.txt",
+                VisibleFromLevel = 1,
+                Content =
+                    "Журнал регистрации посетителей.\n" +
+                    "14:02 — курьер, доставка обедов.\n" +
+                    "14:15 — техник, обслуживание кондиционера.\n" +
+                    "14:40 — курьер, доставка обедов (опять).\n" +
+                    "(Ничего полезного, обычный день.)"
+            },
+            new()
+            {
+                Path = "/studio/security_log.txt",
                 VisibleFromLevel = 2,
                 Content =
-                    "[СИСТЕМНЫЙ ЖУРНАЛ]\n" +
-                    "Обнаружены подозрительные попытки входа под учёткой 'admin'.\n" +
-                    "Проверь файлы проекта — возможно, пароль лежит прямо в них."
+                    "[ЖУРНАЛ БЕЗОПАСНОСТИ]\n" +
+                    "Зафиксирован вход в систему сборки под учёткой 'admin' в необычное время.\n" +
+                    "Пароль, похоже, кто-то обсуждал в общем чате команды — глупо,\n" +
+                    "но людям свойственно ошибаться."
             },
             new()
             {
-                Path = "/server/project.txt",
+                Path = "/studio/team_chat.json",
                 VisibleFromLevel = 2,
                 Content =
-                    "TODO: сменить пароль администратора.\n" +
-                    "Текущий (временный, забыл убрать): blackout"
+                    "[Экспорт переписки. Общий чат команды «Порог».]\n\n" +
+                    "Egor_Dev, 09:14: доброе утро, кто-нибудь трогал билд-сервер ночью?\n" +
+                    "Nastya_QA, 09:15: не я, я спала как убитая\n" +
+                    "Egor_Dev, 09:16: странно, в логах новый вход под admin\n" +
+                    "Egor_Dev, 09:20: так, пароль на билд-сервере опять дефолтный,\n" +
+                    "я временно поставил midnight, поменяю вечером\n" +
+                    "Nastya_QA, 09:21: ЕГОР ЭТО ОБЩИЙ ЧАТ\n" +
+                    "Egor_Dev, 09:21: твою ж...\n" +
+                    "Egor_Dev, 09:22: удалил сообщение! никто не видел, да?\n" +
+                    "Nastya_QA, 09:22: уже видели, все 40 человек в чате"
             },
             new()
             {
-                Path = "/vault/keycard.txt",
+                Path = "/studio/sprint_backlog.txt",
+                VisibleFromLevel = 2,
+                Content =
+                    "Бэклог спринта.\n" +
+                    "- поправить баг с текстурами на 3 уровне\n" +
+                    "- добавить поддержку геймпада\n" +
+                    "- написать тесты (когда-нибудь)\n" +
+                    "(К утечке отношения не имеет.)"
+            },
+            new()
+            {
+                Path = "/archive/keycard.txt",
                 VisibleFromLevel = 3,
-                Content = "Фрагмент ключа шифрования, найденный на карте доступа: 7"
+                Content = "Фрагмент ключа шифрования, вышитый на старой карте доступа архива: 3"
             },
             new()
             {
-                Path = "/vault/truth.enc",
+                Path = "/archive/truth.enc",
                 VisibleFromLevel = 3,
                 Encrypted = true,
-                CipherKey = 7,
-                Content = Cipher.Encode(TruthPlainText, 7)
+                CipherKey = 3,
+                Content = Cipher.Encode(TruthPlainText, 3)
+            },
+            new()
+            {
+                Path = "/archive/coffee_machine_manual.txt",
+                VisibleFromLevel = 3,
+                Content =
+                    "Инструкция к кофемашине в переговорной.\n" +
+                    "Режим эспрессо — кнопка 2.\n" +
+                    "(Прости, здесь правда нет ничего про утечку.)"
+            },
+            new()
+            {
+                Path = "/archive/СЕКРЕТНОЕ_НЕ_ОТКРЫВАТЬ.txt",
+                VisibleFromLevel = 3,
+                Content = "А что вы тут хотели найти? ;)"
             },
         };
     }
@@ -203,9 +263,9 @@ public class Game
 
     private string PromptHost() => _state.Level switch
     {
-        1 => "gate-net",
-        2 => "corp-net",
-        _ => "core-net"
+        1 => "reception-net",
+        2 => "studio-net",
+        _ => "archive-net"
     };
 
     private void Dispatch(string cmd, string arg)
@@ -278,7 +338,7 @@ public class Game
         foreach (var f in files)
         {
             string tag = f.Encrypted && !f.Decrypted ? "[ENCRYPTED]" : "[OK]";
-            Type($"         {f.Name,-20} {tag}", 1);
+            Type($"         {f.Name,-30} {tag}", 1);
             any = true;
         }
 
@@ -321,13 +381,13 @@ public class Game
             return;
         }
 
-        if (target == "/server" && !_state.ServerConnected)
+        if (target == "/studio" && !_state.StudioConnected)
         {
             Type("Требуется подключение. Используй scan, затем connect <адрес>.");
             return;
         }
 
-        if (target == "/vault" && !_state.VaultConnected)
+        if (target == "/archive" && !_state.ArchiveConnected)
         {
             Type("Требуется подключение. Используй scan, затем connect <адрес>.");
             return;
@@ -385,7 +445,7 @@ public class Game
         string attempt = Cipher.Decode(file.Content, key);
         Type("Результат расшифровки:");
         Type(attempt);
-
+        
         int normalizedInput = ((key % 26) + 26) % 26;
         int normalizedExpected = ((file.CipherKey % 26) + 26) % 26;
 
@@ -396,7 +456,7 @@ public class Game
             _state.Score += ScoreForDecrypt;
             Type("[Ключ верный. Файл расшифрован.]");
 
-            if (file.Path == "/vault/truth.enc")
+            if (file.Path == "/archive/truth.enc")
             {
                 _state.Victory = true;
                 _state.GameOver = true;
@@ -407,11 +467,11 @@ public class Game
             Type("[Похоже на бессмыслицу — ключ, скорее всего, неверный.]");
         }
     }
-
+    
     private static string? ExpectedPlainText(string path) => path switch
     {
-        "/gate/access.enc" => AccessPlainText,
-        "/vault/truth.enc" => TruthPlainText,
+        "/reception/badge.enc" => BadgePlainText,
+        "/archive/truth.enc" => TruthPlainText,
         _ => null
     };
 
@@ -429,18 +489,18 @@ public class Game
             return;
         }
 
-        var access = _files.First(f => f.Path == "/gate/access.enc");
-        if (!access.Decrypted)
+        var badge = _files.First(f => f.Path == "/reception/badge.enc");
+        if (!badge.Decrypted)
         {
-            Type("Сначала нужно узнать код — расшифруй access.enc.");
+            Type("Сначала нужно узнать код — расшифруй badge.enc.");
             return;
         }
 
-        if (code.Trim().Equals("raven", StringComparison.OrdinalIgnoreCase))
+        if (code.Trim().Equals("compass", StringComparison.OrdinalIgnoreCase))
         {
             _state.Level = 2;
             _state.Score += ScoreForLevelUp;
-            Type("[Ворота открыты. Обнаружена корпоративная сеть.]");
+            Type("[Проходная открыта. Обнаружена внутренняя сеть студии.]");
             Type("Уровень повышен: 2. Используй scan, чтобы найти новый узел.");
         }
         else
@@ -475,12 +535,12 @@ public class Game
             password = Console.ReadLine() ?? "";
         }
 
-        if (password.Trim().Equals("blackout", StringComparison.OrdinalIgnoreCase))
+        if (password.Trim().Equals("midnight", StringComparison.OrdinalIgnoreCase))
         {
             _state.Level = 3;
             _state.Score += ScoreForLevelUp;
             _state.HackAttemptsLeft = 3;
-            Type("[Доступ получен. Обнаружено хранилище (vault).]");
+            Type("[Доступ получен. Обнаружен архив студии.]");
             Type("Уровень повышен: 3. Используй scan, чтобы найти новый узел.");
         }
         else
@@ -501,19 +561,19 @@ public class Game
 
     private void Scan()
     {
-        if (_state.Level == 2 && !_state.ServerNodeDiscovered)
+        if (_state.Level == 2 && !_state.StudioNodeDiscovered)
         {
-            _state.ServerNodeDiscovered = true;
-            Type($"Обнаружен новый узел: {ServerAddress} (server)");
-            Type("Используй: connect " + ServerAddress);
+            _state.StudioNodeDiscovered = true;
+            Type($"Обнаружен новый узел: {StudioAddress} (studio)");
+            Type("Используй: connect " + StudioAddress);
             return;
         }
 
-        if (_state.Level == 3 && !_state.VaultNodeDiscovered)
+        if (_state.Level == 3 && !_state.ArchiveNodeDiscovered)
         {
-            _state.VaultNodeDiscovered = true;
-            Type($"Обнаружен новый узел: {VaultAddress} (vault)");
-            Type("Используй: connect " + VaultAddress);
+            _state.ArchiveNodeDiscovered = true;
+            Type($"Обнаружен новый узел: {ArchiveAddress} (archive)");
+            Type("Используй: connect " + ArchiveAddress);
             return;
         }
 
@@ -524,17 +584,17 @@ public class Game
     {
         arg = arg.Trim();
 
-        if (arg == ServerAddress && _state.Level >= 2 && _state.ServerNodeDiscovered && !_state.ServerConnected)
+        if (arg == StudioAddress && _state.Level >= 2 && _state.StudioNodeDiscovered && !_state.StudioConnected)
         {
-            _state.ServerConnected = true;
+            _state.StudioConnected = true;
             _state.Score += ScoreForConnect;
-            Type("Соединение установлено: server");
+            Type("Соединение установлено: studio");
         }
-        else if (arg == VaultAddress && _state.Level >= 3 && _state.VaultNodeDiscovered && !_state.VaultConnected)
+        else if (arg == ArchiveAddress && _state.Level >= 3 && _state.ArchiveNodeDiscovered && !_state.ArchiveConnected)
         {
-            _state.VaultConnected = true;
+            _state.ArchiveConnected = true;
             _state.Score += ScoreForConnect;
-            Type("Соединение установлено: vault");
+            Type("Соединение установлено: archive");
         }
         else
         {
@@ -545,11 +605,11 @@ public class Game
     private void Status()
     {
         Type(
-            $"Уровень:    {_state.Level}\n" +
-            $"Очки:       {_state.Score}\n" +
-            $"Путь:       {_state.CurrentDir}\n" +
-            $"Server:     {(_state.ServerConnected ? "подключен" : (_state.ServerNodeDiscovered ? "обнаружен" : "неизвестен"))}\n" +
-            $"Vault:      {(_state.VaultConnected ? "подключен" : (_state.VaultNodeDiscovered ? "обнаружен" : "неизвестен"))}\n" +
+            $"Уровень:      {_state.Level}\n" +
+            $"Очки:         {_state.Score}\n" +
+            $"Путь:         {_state.CurrentDir}\n" +
+            $"Studio:       {(_state.StudioConnected ? "подключен" : (_state.StudioNodeDiscovered ? "обнаружен" : "неизвестен"))}\n" +
+            $"Archive:      {(_state.ArchiveConnected ? "подключен" : (_state.ArchiveNodeDiscovered ? "обнаружен" : "неизвестен"))}\n" +
             $"Попыток hack: {_state.HackAttemptsLeft}"
         );
     }
@@ -579,7 +639,7 @@ public class Game
     {
         name = name.Trim('/');
         string full = _state.CurrentDir == "/" ? "/" + name : _state.CurrentDir + "/" + name;
-        
+
         return _files.FirstOrDefault(f =>
             f.Path == full && f.VisibleFromLevel <= _state.Level);
     }
@@ -645,7 +705,7 @@ public class Game
             Type("=====================================");
             Type("           МИССИЯ ВЫПОЛНЕНА");
             Type("=====================================");
-            Type("Хранилище вскрыто. Правда свободна.");
+            Type("Личность утечки установлена. Дело закрыто.");
             Type($"Итоговый счёт: {_state.Score}");
         }
         else

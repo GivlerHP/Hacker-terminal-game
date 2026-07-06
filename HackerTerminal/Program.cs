@@ -7,3 +7,7 @@ Console.Clear();
 
 var game = new Game();
 game.Run();
+
+Console.WriteLine();
+Console.WriteLine("Нажмите любую клавишу, чтобы выйти...");
+Console.ReadKey();
