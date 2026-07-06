@@ -9,14 +9,9 @@ public class Game
     private List<QuestFile> _files;
     private Dictionary<string, int> _dirVisibleFromLevel;
     private Dictionary<string, string> _plainTextByPath;
+    private QuestPuzzleConfig _puzzles;
 
     private const string QuestsDir = "quests";
-
-    private const string StudioAddress = "172.20.14.9";
-    private const string ArchiveAddress = "10.55.2.1";
-
-    private const string BadgePlainText = "GUEST CODE: COMPASS";
-    private const string TruthPlainText = "Утечка произошла по вине продюсера Марии";
 
     private const string SavePath = "save.json";
 
@@ -34,6 +29,7 @@ public class Game
             _files = quest.Files;
             _dirVisibleFromLevel = quest.DirVisibleFromLevel;
             _plainTextByPath = quest.PlainTextByPath;
+            _puzzles = quest.Puzzles;
         }
         catch (Exception ex)
         {
@@ -43,21 +39,12 @@ public class Game
             Console.ResetColor();
 
             _files = BuildFallbackQuest();
-            _dirVisibleFromLevel = new()
-            {
-                ["/inbox"] = 1,
-                ["/reception"] = 1,
-                ["/studio"] = 2,
-                ["/archive"] = 3,
-            };
-            _plainTextByPath = new()
-            {
-                ["/reception/badge.enc"] = BadgePlainText,
-                ["/archive/truth.enc"] = TruthPlainText,
-            };
+            _dirVisibleFromLevel = new();
+            _plainTextByPath = new();
+            // QuestPuzzleConfig уже содержит исходные значения по умолчанию
+            _puzzles = new QuestPuzzleConfig();
         }
     }
-
     private static List<QuestFile> BuildFallbackQuest()
     {
         return new List<QuestFile>
@@ -372,7 +359,7 @@ public class Game
             _state.Score += ScoreForDecrypt;
             Type("[Ключ верный. Файл расшифрован.]");
 
-            if (file.Path == "/archive/truth.enc")
+            if (file.Path == _puzzles.VictoryFilePath)
             {
                 _state.Victory = true;
                 _state.GameOver = true;
@@ -401,14 +388,20 @@ public class Game
             return;
         }
 
-        var badge = _files.First(f => f.Path == "/reception/badge.enc");
-        if (!badge.Decrypted)
+        var badge = _files.FirstOrDefault(f => f.Path == _puzzles.BadgeFilePath);
+        if (badge == null)
         {
-            Type("Сначала нужно узнать код — расшифруй badge.enc.");
+            Type("Ошибка квеста: не найден файл " + _puzzles.BadgeFilePath);
             return;
         }
 
-        if (code.Trim().Equals("compass", StringComparison.OrdinalIgnoreCase))
+        if (!badge.Decrypted)
+        {
+            Type("Сначала нужно узнать код — расшифруй " + badge.Name + ".");
+            return;
+        }
+
+        if (code.Trim().Equals(_puzzles.UnlockCode, StringComparison.OrdinalIgnoreCase))
         {
             _state.Level = 2;
             _state.Score += ScoreForLevelUp;
@@ -426,9 +419,9 @@ public class Game
         var parts = arg.Split(' ', 2, StringSplitOptions.RemoveEmptyEntries);
         string target = parts.Length > 0 ? parts[0].ToLowerInvariant() : "";
 
-        if (target != "admin")
+        if (!target.Equals(_puzzles.HackTarget, StringComparison.OrdinalIgnoreCase))
         {
-            Type("Неизвестная цель. Сейчас доступен только 'admin'.");
+            Type($"Неизвестная цель. Сейчас доступен только '{_puzzles.HackTarget}'.");
             return;
         }
 
@@ -442,12 +435,12 @@ public class Game
 
         if (password == null)
         {
-            Console.WriteLine($"Взлом учётной записи 'admin'. Осталось попыток: {_state.HackAttemptsLeft}");
+            Console.WriteLine($"Взлом учётной записи '{_puzzles.HackTarget}'. Осталось попыток: {_state.HackAttemptsLeft}");
             Console.Write("password> ");
             password = Console.ReadLine() ?? "";
         }
 
-        if (password.Trim().Equals("midnight", StringComparison.OrdinalIgnoreCase))
+        if (password.Trim().Equals(_puzzles.HackPassword, StringComparison.OrdinalIgnoreCase))
         {
             _state.Level = 3;
             _state.Score += ScoreForLevelUp;
@@ -476,16 +469,16 @@ public class Game
         if (_state.Level == 2 && !_state.StudioNodeDiscovered)
         {
             _state.StudioNodeDiscovered = true;
-            Type($"Обнаружен новый узел: {StudioAddress} (studio)");
-            Type("Используй: connect " + StudioAddress);
+            Type($"Обнаружен новый узел: {_puzzles.StudioNodeAddress} (studio)");
+            Type("Используй: connect " + _puzzles.StudioNodeAddress);
             return;
         }
 
         if (_state.Level == 3 && !_state.ArchiveNodeDiscovered)
         {
             _state.ArchiveNodeDiscovered = true;
-            Type($"Обнаружен новый узел: {ArchiveAddress} (archive)");
-            Type("Используй: connect " + ArchiveAddress);
+            Type($"Обнаружен новый узел: {_puzzles.ArchiveNodeAddress} (archive)");
+            Type("Используй: connect " + _puzzles.ArchiveNodeAddress);
             return;
         }
 
@@ -496,13 +489,13 @@ public class Game
     {
         arg = arg.Trim();
 
-        if (arg == StudioAddress && _state.Level >= 2 && _state.StudioNodeDiscovered && !_state.StudioConnected)
+        if (arg == _puzzles.StudioNodeAddress && _state.Level >= 2 && _state.StudioNodeDiscovered && !_state.StudioConnected)
         {
             _state.StudioConnected = true;
             _state.Score += ScoreForConnect;
             Type("Соединение установлено: studio");
         }
-        else if (arg == ArchiveAddress && _state.Level >= 3 && _state.ArchiveNodeDiscovered && !_state.ArchiveConnected)
+        else if (arg == _puzzles.ArchiveNodeAddress && _state.Level >= 3 && _state.ArchiveNodeDiscovered && !_state.ArchiveConnected)
         {
             _state.ArchiveConnected = true;
             _state.Score += ScoreForConnect;

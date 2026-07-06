@@ -2,11 +2,23 @@
 
 namespace HackerTerminal;
 
+public class QuestPuzzleConfig
+{
+    public string BadgeFilePath { get; set; } = "/reception/badge.enc";
+    public string UnlockCode { get; set; } = "compass";
+    public string HackTarget { get; set; } = "admin";
+    public string HackPassword { get; set; } = "midnight";
+    public string VictoryFilePath { get; set; } = "/archive/truth.enc";
+    public string StudioNodeAddress { get; set; } = "172.20.14.9";
+    public string ArchiveNodeAddress { get; set; } = "10.55.2.1";
+}
+
 public class QuestData
 {
     public List<QuestFile> Files { get; } = new();
     public Dictionary<string, int> DirVisibleFromLevel { get; } = new();
     public Dictionary<string, string> PlainTextByPath { get; } = new();
+    public QuestPuzzleConfig Puzzles { get; } = new();
 }
 
 public static class QuestLoader
@@ -124,6 +136,17 @@ public static class QuestLoader
                 CipherKey = file.CipherKey ?? 0,
                 Content = content,
             });
+        }
+        
+        if (dto.Puzzles is { } p)
+        {
+            if (!string.IsNullOrWhiteSpace(p.BadgeFilePath)) data.Puzzles.BadgeFilePath = NormalizePath(p.BadgeFilePath);
+            if (!string.IsNullOrWhiteSpace(p.UnlockCode)) data.Puzzles.UnlockCode = p.UnlockCode;
+            if (!string.IsNullOrWhiteSpace(p.HackTarget)) data.Puzzles.HackTarget = p.HackTarget;
+            if (!string.IsNullOrWhiteSpace(p.HackPassword)) data.Puzzles.HackPassword = p.HackPassword;
+            if (!string.IsNullOrWhiteSpace(p.VictoryFilePath)) data.Puzzles.VictoryFilePath = NormalizePath(p.VictoryFilePath);
+            if (!string.IsNullOrWhiteSpace(p.StudioNodeAddress)) data.Puzzles.StudioNodeAddress = p.StudioNodeAddress;
+            if (!string.IsNullOrWhiteSpace(p.ArchiveNodeAddress)) data.Puzzles.ArchiveNodeAddress = p.ArchiveNodeAddress;
         }
     }
 

@@ -123,5 +123,14 @@
       "visibleFromLevel": 3,
       "content": ["А что вы тут хотели найти? ;)"]
     }
-  ]
+  ],
+  "puzzles": {
+    "badgeFilePath": "/reception/badge.enc",
+    "unlockCode": "compass",
+    "hackTarget": "admin",
+    "hackPassword": "midnight",
+    "victoryFilePath": "/archive/truth.enc",
+    "studioNodeAddress": "172.20.14.9",
+    "archiveNodeAddress": "10.55.2.1"
+  }
 }
