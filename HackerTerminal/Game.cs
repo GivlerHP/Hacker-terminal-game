@@ -22,6 +22,12 @@ public class Game
 
     private const string SavePath = "save.json";
 
+    private const int ScoreForDecrypt = 50;
+    private const int ScoreForLevelUp = 50;
+    private const int ScoreForConnect = 10;
+
+    private static readonly JsonSerializerOptions SaveJsonOptions = new() { WriteIndented = true };
+
     public Game()
     {
         _files = BuildQuest();
@@ -91,7 +97,7 @@ public class Game
             },
         };
     }
-    
+
     public void Run()
     {
         PrintBanner();
@@ -106,7 +112,12 @@ public class Game
             Console.Write($"root@{PromptHost()}:{_state.CurrentDir}$ ");
             Console.ForegroundColor = ConsoleColor.Green;
 
-            string raw = Console.ReadLine() ?? "";
+            string? raw = Console.ReadLine();
+            if (raw == null)
+            {
+                break;
+            }
+
             raw = raw.Trim();
             if (raw.Length == 0) continue;
 
@@ -178,7 +189,7 @@ public class Game
                 if (file == null) continue;
 
                 file.Decrypted = true;
-                string plain = ExpectedPlainText(file.Path);
+                string? plain = ExpectedPlainText(file.Path);
                 if (plain != null) file.Content = plain;
             }
 
@@ -227,7 +238,7 @@ public class Game
         }
     }
 
-    private void Help()
+    private static void Help()
     {
         Type(
             "Доступные команды:\n" +
@@ -251,7 +262,7 @@ public class Game
     {
         var dirs = _dirVisibleFromLevel
             .Where(kv => Parent(kv.Key) == _state.CurrentDir && kv.Value <= _state.Level)
-            .Select(kv => kv.Key.Substring(kv.Key.LastIndexOf('/') + 1))
+            .Select(kv => kv.Key[(kv.Key.LastIndexOf('/') + 1)..])
             .OrderBy(x => x);
 
         var files = _files
@@ -288,7 +299,7 @@ public class Game
             return;
         }
 
-        if (arg == "/" )
+        if (arg == "/")
         {
             _state.CurrentDir = "/";
             return;
@@ -375,13 +386,14 @@ public class Game
         Type("Результат расшифровки:");
         Type(attempt);
 
-        string expected = ExpectedPlainText(file.Path);
+        int normalizedInput = ((key % 26) + 26) % 26;
+        int normalizedExpected = ((file.CipherKey % 26) + 26) % 26;
 
-        if (expected != null && attempt == expected)
+        if (normalizedInput == normalizedExpected)
         {
             file.Decrypted = true;
             file.Content = attempt;
-            _state.Score += 50;
+            _state.Score += ScoreForDecrypt;
             Type("[Ключ верный. Файл расшифрован.]");
 
             if (file.Path == "/vault/truth.enc")
@@ -390,13 +402,13 @@ public class Game
                 _state.GameOver = true;
             }
         }
-        else if (expected != null)
+        else
         {
             Type("[Похоже на бессмыслицу — ключ, скорее всего, неверный.]");
         }
     }
 
-    private static string ExpectedPlainText(string path) => path switch
+    private static string? ExpectedPlainText(string path) => path switch
     {
         "/gate/access.enc" => AccessPlainText,
         "/vault/truth.enc" => TruthPlainText,
@@ -427,7 +439,7 @@ public class Game
         if (code.Trim().Equals("raven", StringComparison.OrdinalIgnoreCase))
         {
             _state.Level = 2;
-            _state.Score += 50;
+            _state.Score += ScoreForLevelUp;
             Type("[Ворота открыты. Обнаружена корпоративная сеть.]");
             Type("Уровень повышен: 2. Используй scan, чтобы найти новый узел.");
         }
@@ -454,7 +466,7 @@ public class Game
             return;
         }
 
-        string password = parts.Length > 1 ? parts[1] : null;
+        string? password = parts.Length > 1 ? parts[1] : null;
 
         if (password == null)
         {
@@ -466,7 +478,7 @@ public class Game
         if (password.Trim().Equals("blackout", StringComparison.OrdinalIgnoreCase))
         {
             _state.Level = 3;
-            _state.Score += 50;
+            _state.Score += ScoreForLevelUp;
             _state.HackAttemptsLeft = 3;
             Type("[Доступ получен. Обнаружено хранилище (vault).]");
             Type("Уровень повышен: 3. Используй scan, чтобы найти новый узел.");
@@ -512,16 +524,16 @@ public class Game
     {
         arg = arg.Trim();
 
-        if (arg == ServerAddress && _state.Level >= 2 && _state.ServerNodeDiscovered)
+        if (arg == ServerAddress && _state.Level >= 2 && _state.ServerNodeDiscovered && !_state.ServerConnected)
         {
             _state.ServerConnected = true;
-            _state.Score += 10;
+            _state.Score += ScoreForConnect;
             Type("Соединение установлено: server");
         }
-        else if (arg == VaultAddress && _state.Level >= 3 && _state.VaultNodeDiscovered)
+        else if (arg == VaultAddress && _state.Level >= 3 && _state.VaultNodeDiscovered && !_state.VaultConnected)
         {
             _state.VaultConnected = true;
-            _state.Score += 10;
+            _state.Score += ScoreForConnect;
             Type("Соединение установлено: vault");
         }
         else
@@ -553,7 +565,7 @@ public class Game
         try
         {
             _state.DecryptedFiles = _files.Where(f => f.Decrypted).Select(f => f.Path).ToList();
-            var json = JsonSerializer.Serialize(_state, new JsonSerializerOptions { WriteIndented = true });
+            var json = JsonSerializer.Serialize(_state, SaveJsonOptions);
             File.WriteAllText(SavePath, json);
             Type("Прогресс сохранён в " + SavePath);
         }
@@ -562,14 +574,14 @@ public class Game
             Type("Не удалось сохранить: " + ex.Message);
         }
     }
-    
-    private QuestFile FindFile(string name)
+
+    private QuestFile? FindFile(string name)
     {
         name = name.Trim('/');
         string full = _state.CurrentDir == "/" ? "/" + name : _state.CurrentDir + "/" + name;
-
+        
         return _files.FirstOrDefault(f =>
-            (f.Path == full || f.Name == name) && f.VisibleFromLevel <= _state.Level);
+            f.Path == full && f.VisibleFromLevel <= _state.Level);
     }
 
     private static string Parent(string path)
@@ -577,7 +589,7 @@ public class Game
         if (path == "/") return "/";
         int idx = path.LastIndexOf('/');
         if (idx <= 0) return "/";
-        return path.Substring(0, idx);
+        return path[..idx];
     }
 
     private static void Type(string text, int delayMs = 4)
@@ -607,13 +619,13 @@ public class Game
     private static void BootSequence()
     {
         string[] steps =
-        {
+        [
             "Booting kernel...",
             "Mounting filesystem...",
             "Loading network drivers...",
             "Establishing anonymous relay...",
             "Spoofing MAC address...",
-        };
+        ];
 
         foreach (var s in steps)
         {
